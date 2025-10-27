@@ -5,7 +5,7 @@ import { Player } from 'src/models/player.model';
 import { DeckClass } from 'src/models/deck.model';
 import { DeckSingleCard } from 'src/models/deck-single-card.model';
 import { determineWinnerCard, removeCardFromHand } from '../game-manager-utils';
-import { CardPointValueEnum, CardSuitEnum } from 'src/models/enums';
+import { CardSuitEnum } from 'src/models/enums';
 
 @Injectable()
 export class GameManagerService {
@@ -17,15 +17,7 @@ export class GameManagerService {
    */
   deck = this.deckClassInstance.deck;
   private $playedCardCount = new BehaviorSubject(0);
-  private placeHolderDeckSingleCard = new DeckSingleCard({
-    gameValue: 0,
-    numberValue: 0,
-    pointValue: CardPointValueEnum.None,
-    suit: CardSuitEnum.Coins,
-    id: -1,
-  });
-  firstPlayedCard: DeckSingleCard = this.placeHolderDeckSingleCard;
-  secondPlayedCard: DeckSingleCard = this.placeHolderDeckSingleCard;
+
   /**
    * The suit that must be followed in the current trick. This is the suit of the card played by the leading player.
    */
