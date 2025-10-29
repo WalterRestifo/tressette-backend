@@ -1,13 +1,5 @@
-import { CardPointValueEnum, CardSuitEnum } from './enums';
-
-export type DeckSingleCardType = {
-  gameValue: number;
-  numberValue: number;
-  pointValue: CardPointValueEnum;
-  suit: CardSuitEnum;
-  id: number;
-};
+import { DeckSingleCardDto } from './dtos/deckSingleCard.dto';
 
 export class DeckSingleCard {
-  constructor(public data: DeckSingleCardType) {}
+  constructor(public data: DeckSingleCardDto) {}
 }

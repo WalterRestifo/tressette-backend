@@ -1,5 +1,3 @@
-import { Injectable } from '@nestjs/common';
-
 import { BehaviorSubject, filter } from 'rxjs';
 import { Player } from 'src/models/player.model';
 import { DeckClass } from 'src/models/deck.model';
@@ -7,11 +5,12 @@ import { DeckSingleCard } from 'src/models/deck-single-card.model';
 import { determineWinnerCard, removeCardFromHand } from '../game-manager-utils';
 import { CardSuitEnum } from 'src/models/enums';
 
-@Injectable()
 export class GameManagerService {
+  readonly sessionId: string;
   private deckClassInstance = new DeckClass();
   player1 = new Player('one');
   player2 = new Player('two');
+  winner: Player | undefined = undefined;
   /**
    * The cards that are in the middle. They are 40 before giving the cards to the players and 20 on the first trick. After every trick every player takes 1 card from the deck until the deck has no cards.
    */
@@ -32,7 +31,8 @@ export class GameManagerService {
    */
   private normalizationFactor = 3;
 
-  constructor() {
+  constructor(sessionId: string) {
+    this.sessionId = sessionId;
     this.initialiseGame();
     this.$playedCardCount
       .pipe(filter((count) => count === 2))
@@ -146,6 +146,11 @@ export class GameManagerService {
   }
 
   endGame = () => {
+    if (this.player1.points > this.player2.points) {
+      this.winner = this.player1;
+    } else if (this.player1.points < this.player2.points) {
+      this.winner = this.player2;
+    } else this.winner = undefined;
     this.$gameEnded.next(true);
   };
 

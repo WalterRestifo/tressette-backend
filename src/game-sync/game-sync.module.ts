@@ -3,6 +3,7 @@ import { GameSyncGateway } from './gateway/game-sync/game-sync.gateway';
 import { GameManagerService } from 'src/services/game-manager/game-manager/game-manager.service';
 
 @Module({
-  providers: [GameSyncGateway, GameManagerService],
+  imports: [GameManagerService],
+  providers: [GameSyncGateway],
 })
 export class GameSyncModule {}
