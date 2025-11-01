@@ -1,9 +1,11 @@
 import { DeckSingleCard } from '../deck-single-card.model';
+import { PlayerEnum } from '../enums';
+import { DeckSingleCardDto } from './deckSingleCard.dto';
 
 export type PlayerDto = {
   hand: DeckSingleCard[];
-  name: string;
+  name: PlayerEnum;
   isOwnTurn: boolean;
-  inThisTrickPlayedCard: DeckSingleCard | undefined;
+  inThisTrickPlayedCard: DeckSingleCardDto | undefined;
   points: number;
 };

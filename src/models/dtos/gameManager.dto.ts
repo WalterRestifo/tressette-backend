@@ -1,5 +1,5 @@
-import { DeckSingleCard } from '../deck-single-card.model';
 import { CardSuitEnum } from '../enums';
+import { DeckSingleCardDto } from './deckSingleCard.dto';
 import { PlayerDto } from './player.dto';
 import { SessionIdentityDto } from './sessionIdentity.dto';
 
@@ -8,8 +8,8 @@ export type GameManagerDto = {
   gameEnded: boolean;
   leadingSuit: CardSuitEnum | undefined;
   inThisTrickPlayedCards: {
-    player1: DeckSingleCard | undefined;
-    player2: DeckSingleCard | undefined;
+    player1: DeckSingleCardDto | undefined;
+    player2: DeckSingleCardDto | undefined;
   };
   currentPlayer: PlayerDto;
   sessionIdentity: SessionIdentityDto;

@@ -43,6 +43,7 @@ export class GameSyncGateway
 
   @SubscribeMessage('playedCard')
   handlePlayCard(
+    @ConnectedSocket() client: Socket,
     @MessageBody()
     payload: {
       card: DeckSingleCardDto;
@@ -50,9 +51,21 @@ export class GameSyncGateway
       sessionIdentity: SessionIdentityDto;
     },
   ) {
-    const room = payload.sessionIdentity.sessionId;
-    const playedCard = { card: payload.card, playedFrom: payload.player.name };
-    this.server.to(room).emit('newCardPlayed', playedCard);
+    const sessionScopedGameManager = this.sessions.find(
+      ({ sessionId }) => sessionId === payload.sessionIdentity.sessionId,
+    );
+    if (sessionScopedGameManager) {
+      const { card, player } = payload;
+      sessionScopedGameManager.playCard(card, player);
+      const room = payload.sessionIdentity.sessionId;
+      const updatedGameManager = this.createGameManagerDto(
+        sessionScopedGameManager,
+        player.name,
+      );
+      this.server.to(room).emit('newCardPlayed', updatedGameManager);
+    } else {
+      client.emit('error', { message: 'game manager session lost' });
+    }
   }
 
   //todo: transfer this logic to an util

@@ -1,15 +1,16 @@
 import { BehaviorSubject, filter } from 'rxjs';
 import { Player } from 'src/models/player.model';
 import { DeckClass } from 'src/models/deck.model';
-import { DeckSingleCard } from 'src/models/deck-single-card.model';
 import { determineWinnerCard, removeCardFromHand } from '../game-manager-utils';
-import { CardSuitEnum } from 'src/models/enums';
+import { CardSuitEnum, PlayerEnum } from 'src/models/enums';
+import { DeckSingleCardDto } from 'src/models/dtos/deckSingleCard.dto';
+import { PlayerDto } from 'src/models/dtos/player.dto';
 
 export class GameManagerService {
   readonly sessionId: string;
   private deckClassInstance = new DeckClass();
-  player1 = new Player('one');
-  player2 = new Player('two');
+  player1 = new Player(PlayerEnum.Player1);
+  player2 = new Player(PlayerEnum.Player2);
   winner: Player | undefined = undefined;
   /**
    * The cards that are in the middle. They are 40 before giving the cards to the players and 20 on the first trick. After every trick every player takes 1 card from the deck until the deck has no cards.
@@ -81,8 +82,8 @@ export class GameManagerService {
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     const cardTrickPoints =
-      this.player1.inThisTrickPlayedCard!.data.pointValue +
-      this.player2.inThisTrickPlayedCard!.data.pointValue;
+      this.player1.inThisTrickPlayedCard!.pointValue +
+      this.player2.inThisTrickPlayedCard!.pointValue;
 
     // the winner of the last trick gains bonus points
     const lastTrickPoints = this.player1.hand.length === 0 ? 3 : 0;
@@ -115,10 +116,9 @@ export class GameManagerService {
     if (this.player1.hand.length === 0) this.endGame();
   }
 
-  playCard(card: DeckSingleCard, player: Player) {
+  playCard(card: DeckSingleCardDto, player: PlayerDto) {
     // If it is the first played card in the trick, the card suit becomes the leading suit
-    if (this.$playedCardCount.value === 0)
-      this.$leadingSuit.next(card.data.suit);
+    if (this.$playedCardCount.value === 0) this.$leadingSuit.next(card.suit);
     if (player.name === this.player1.name) {
       this.player1.inThisTrickPlayedCard = card;
       removeCardFromHand(this.player1);
