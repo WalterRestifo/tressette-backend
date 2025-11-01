@@ -1,6 +1,7 @@
 import { DeckSingleCard } from '../deck-single-card.model';
 import { CardSuitEnum } from '../enums';
 import { PlayerDto } from './player.dto';
+import { SessionIdentityDto } from './sessionIdentity.dto';
 
 export type GameManagerDto = {
   player: PlayerDto;
@@ -11,4 +12,5 @@ export type GameManagerDto = {
     player2: DeckSingleCard | undefined;
   };
   currentPlayer: PlayerDto;
+  sessionIdentity: SessionIdentityDto;
 };

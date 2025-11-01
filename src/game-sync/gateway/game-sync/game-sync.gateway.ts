@@ -47,11 +47,12 @@ export class GameSyncGateway
     payload: {
       card: DeckSingleCardDto;
       player: PlayerDto;
-      identity: SessionIdentityDto;
+      sessionIdentity: SessionIdentityDto;
     },
-    @ConnectedSocket() client: Socket,
   ) {
-    client.emit('newCardPlayed', payload);
+    const room = payload.sessionIdentity.sessionId;
+    const playedCard = { card: payload.card, playedFrom: payload.player.name };
+    this.server.to(room).emit('newCardPlayed', playedCard);
   }
 
   //todo: transfer this logic to an util
@@ -81,6 +82,7 @@ export class GameSyncGateway
         player2: player2.inThisTrickPlayedCard,
       },
       currentPlayer: this.sanitizePlayer(gameManager.getCurrentPlayer()),
+      sessionIdentity: { sessionId: gameManager.sessionId, player: player },
     };
 
     if (player === PlayerEnum.Player2) {
