@@ -106,9 +106,7 @@ export class GameSyncGateway
     const targetClient = this.clients.get(this.getKey(sessionIdentity));
     if (targetClient) {
       await targetClient.join(sessionIdentity.sessionId);
-      targetClient.emit('gameInitialised', {
-        gameData,
-      });
+      targetClient.emit('gameInitialised', gameData);
     } else {
       client.emit('error', { message: 'client socket not found' });
     }
