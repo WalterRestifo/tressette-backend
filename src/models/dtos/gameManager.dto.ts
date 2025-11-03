@@ -1,4 +1,4 @@
-import { CardSuitEnum } from '../enums';
+import { CardSuitEnum, PlayerEnum } from '../enums';
 import { DeckSingleCardDto } from './deckSingleCard.dto';
 import { PlayerDto } from './player.dto';
 import { SessionIdentityDto } from './sessionIdentity.dto';
@@ -11,6 +11,6 @@ export type GameManagerDto = {
     player1: DeckSingleCardDto | undefined;
     player2: DeckSingleCardDto | undefined;
   };
-  currentPlayer: PlayerDto;
+  currentPlayerName: PlayerEnum;
   sessionIdentity: SessionIdentityDto;
 };

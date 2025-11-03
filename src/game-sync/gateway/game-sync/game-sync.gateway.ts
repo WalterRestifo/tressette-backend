@@ -57,6 +57,7 @@ export class GameSyncGateway
     if (sessionScopedGameManager) {
       const { card, player } = payload;
       sessionScopedGameManager.playCard(card, player);
+      sessionScopedGameManager.updateTurn();
       const room = payload.sessionIdentity.sessionId;
       const updatedGameManager = this.createGameManagerDto(
         sessionScopedGameManager,
@@ -94,7 +95,8 @@ export class GameSyncGateway
         player1: player1.inThisTrickPlayedCard,
         player2: player2.inThisTrickPlayedCard,
       },
-      currentPlayer: this.sanitizePlayer(gameManager.getCurrentPlayer()),
+      currentPlayerName: this.sanitizePlayer(gameManager.getCurrentPlayer())
+        .name,
       sessionIdentity: { sessionId: gameManager.sessionId, player: player },
     };
 
