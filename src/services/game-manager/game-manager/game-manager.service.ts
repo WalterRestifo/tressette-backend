@@ -126,6 +126,9 @@ export class GameManagerService {
     if (newCard1) this.player1.hand.push(newCard1);
     if (newCard2) this.player2.hand.push(newCard2);
 
+    this.player1.hand.sort((a, b) => this.compare(a, b));
+    this.player2.hand.sort((a, b) => this.compare(a, b));
+
     // when the players don't have any more card in the hand, the game is over
     if (this.player1.hand.length === 0) this.endGame();
   }
