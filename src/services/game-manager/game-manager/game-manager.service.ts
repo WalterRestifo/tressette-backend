@@ -1,13 +1,17 @@
 import { BehaviorSubject } from 'rxjs';
 import { Player } from 'src/models/player.model';
 import { DeckClass } from 'src/models/deck.model';
-import { determineWinnerCard, removeCardFromHand } from '../game-manager-utils';
 import { CardSuitEnum, PlayerEnum } from 'src/models/enums';
 import { DeckSingleCardDto } from 'src/models/dtos/deckSingleCard.dto';
 import { PlayerDto } from 'src/models/dtos/player.dto';
 import { DeckSingleCard } from 'src/models/deck-single-card.model';
 
 export class GameManagerService {
+  /**
+   * The ace has normally 1 point and the other cards with point have 1/3 point value.
+   */
+  private normalizationFactor = 3;
+
   readonly sessionId: string;
   private deckClassInstance = new DeckClass();
   player1 = new Player(PlayerEnum.Player1);
@@ -16,79 +20,38 @@ export class GameManagerService {
   /**
    * The cards that are in the middle. They are 40 before giving the cards to the players and 20 on the first trick. After every trick every player takes 1 card from the deck until the deck has no cards.
    */
-  deck = this.deckClassInstance.deck;
+  private deck = this.deckClassInstance.deck;
   playedCardCount = 0;
 
   /**
    * The suit that must be followed in the current trick. This is the suit of the card played by the leading player.
    */
-  $leadingSuit = new BehaviorSubject<CardSuitEnum | undefined>(undefined);
+  leadingSuit: CardSuitEnum | undefined;
   /**
    * The player that won the last trick. If the game just begun, it is player 1.
    */
   private leadingPlayer: Player = this.player1;
   $gameEnded = new BehaviorSubject(false);
-  /**
-   * The ace has normally 1 point and the other cards with point have 1/3 point value.
-   */
-  private normalizationFactor = 3;
 
   constructor(sessionId: string) {
     this.sessionId = sessionId;
     this.initialiseGame();
   }
 
-  initialiseGame() {
-    this.deckClassInstance.initialiseDeck();
-    this.deckClassInstance.shuffleDeck();
-    this.initialiseFirstRound();
-  }
-
-  initialiseFirstRound() {
-    this.dealInitialCards();
-    // The first player always begin the first round
-    this.player1.isOwnTurn = true;
-    this.leadingPlayer = this.player1;
-  }
-
-  private dealInitialCards() {
-    const cardsForPlayer1 = this.deck
-      .splice(0, 10)
-      .sort((a, b) => this.compare(a, b));
-    const cardsForPlayer2 = this.deck
-      .splice(0, 10)
-      .sort((a, b) => this.compare(a, b));
-
-    this.player1.hand = cardsForPlayer1;
-    this.player2.hand = cardsForPlayer2;
-  }
-
-  //TODO: put this compare function somewhere else
-  compare = (a: DeckSingleCard, b: DeckSingleCard): number => {
-    if (a.data.suit < b.data.suit) {
-      return -1;
-    }
-    if (a.data.suit > b.data.suit) {
-      return +1;
-    }
-    // If suits are equal, sort by value
-    return a.data.numberValue - b.data.numberValue;
-  };
-
   async playRound() {
     this.playedCardCount = 0;
-    let winnerCard;
+    let winnerCard: DeckSingleCardDto;
     if (this.leadingPlayer === this.player1) {
-      winnerCard = determineWinnerCard(
+      winnerCard = this.determineWinnerCard(
         this.player1.inThisTrickPlayedCard!,
         this.player2.inThisTrickPlayedCard!,
-        this.$leadingSuit.value!,
+        this.leadingSuit!,
       );
     } else {
-      winnerCard = determineWinnerCard(
+      winnerCard = this.determineWinnerCard(
         this.player2.inThisTrickPlayedCard!,
         this.player1.inThisTrickPlayedCard!,
-        this.$leadingSuit.value!,
+        this.leadingSuit!,
       );
     }
 
@@ -135,13 +98,13 @@ export class GameManagerService {
 
   playCard(card: DeckSingleCardDto, player: PlayerDto) {
     // If it is the first played card in the trick, the card suit becomes the leading suit
-    if (this.playedCardCount === 0) this.$leadingSuit.next(card.suit);
+    if (this.playedCardCount === 0) this.leadingSuit = card.suit;
     if (player.name === this.player1.name) {
       this.player1.inThisTrickPlayedCard = card;
-      removeCardFromHand(this.player1);
+      this.removeCardFromHand(this.player1);
     } else {
       this.player2.inThisTrickPlayedCard = card;
-      removeCardFromHand(this.player2);
+      this.removeCardFromHand(this.player2);
     }
     this.playedCardCount++;
   }
@@ -159,7 +122,7 @@ export class GameManagerService {
   resetTrick() {
     this.player1.inThisTrickPlayedCard = undefined;
     this.player2.inThisTrickPlayedCard = undefined;
-    this.$leadingSuit.next(undefined);
+    this.leadingSuit = undefined;
   }
 
   endGame = () => {
@@ -185,5 +148,60 @@ export class GameManagerService {
 
   normalizePoints = (points: number) => {
     return points / this.normalizationFactor;
+  };
+
+  private initialiseGame() {
+    this.deckClassInstance.initialiseDeck();
+    this.deckClassInstance.shuffleDeck();
+    this.initialiseFirstRound();
+  }
+
+  private initialiseFirstRound() {
+    this.dealInitialCards();
+    // The first player always begin the first round
+    this.player1.isOwnTurn = true;
+    this.leadingPlayer = this.player1;
+  }
+
+  private dealInitialCards() {
+    const cardsForPlayer1 = this.deck
+      .splice(0, 10)
+      .sort((a, b) => this.compare(a, b));
+    const cardsForPlayer2 = this.deck
+      .splice(0, 10)
+      .sort((a, b) => this.compare(a, b));
+
+    this.player1.hand = cardsForPlayer1;
+    this.player2.hand = cardsForPlayer2;
+  }
+
+  private compare = (a: DeckSingleCard, b: DeckSingleCard): number => {
+    if (a.data.suit < b.data.suit) {
+      return -1;
+    }
+    if (a.data.suit > b.data.suit) {
+      return +1;
+    }
+    // If suits are equal, sort by value
+    return a.data.numberValue - b.data.numberValue;
+  };
+
+  private determineWinnerCard = (
+    firstPlayedCard: DeckSingleCardDto,
+    secondPlayedCard: DeckSingleCardDto,
+    leadingSuit: CardSuitEnum,
+  ) => {
+    if (secondPlayedCard.suit !== leadingSuit) {
+      return firstPlayedCard;
+    } else if (firstPlayedCard.gameValue > secondPlayedCard.gameValue) {
+      return firstPlayedCard;
+    } else return secondPlayedCard;
+  };
+
+  private removeCardFromHand = (player: Player) => {
+    const indexOfTheCard = player.hand.findIndex(
+      (cardOfHand) => cardOfHand.data.id === player.inThisTrickPlayedCard!.id,
+    );
+    player.hand.splice(indexOfTheCard, 1);
   };
 }
