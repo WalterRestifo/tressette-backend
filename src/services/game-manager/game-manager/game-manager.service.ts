@@ -5,6 +5,7 @@ import { determineWinnerCard, removeCardFromHand } from '../game-manager-utils';
 import { CardSuitEnum, PlayerEnum } from 'src/models/enums';
 import { DeckSingleCardDto } from 'src/models/dtos/deckSingleCard.dto';
 import { PlayerDto } from 'src/models/dtos/player.dto';
+import { DeckSingleCard } from 'src/models/deck-single-card.model';
 
 export class GameManagerService {
   readonly sessionId: string;
@@ -51,12 +52,28 @@ export class GameManagerService {
   }
 
   private dealInitialCards() {
-    const cardsForPlayer1 = this.deck.splice(0, 10);
-    const cardsForPlayer2 = this.deck.splice(0, 10);
+    const cardsForPlayer1 = this.deck
+      .splice(0, 10)
+      .sort((a, b) => this.compare(a, b));
+    const cardsForPlayer2 = this.deck
+      .splice(0, 10)
+      .sort((a, b) => this.compare(a, b));
 
     this.player1.hand = cardsForPlayer1;
     this.player2.hand = cardsForPlayer2;
   }
+
+  //TODO: put this compare function somewhere else
+  compare = (a: DeckSingleCard, b: DeckSingleCard): number => {
+    if (a.data.suit < b.data.suit) {
+      return -1;
+    }
+    if (a.data.suit > b.data.suit) {
+      return +1;
+    }
+    // If suits are equal, sort by value
+    return a.data.numberValue - b.data.numberValue;
+  };
 
   async playRound() {
     this.playedCardCount = 0;
