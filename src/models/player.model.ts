@@ -1,9 +1,8 @@
-import { DeckSingleCard } from './deck-single-card.model';
 import { DeckSingleCardDto } from './dtos/deckSingleCard.dto';
 import { PlayerEnum } from './enums';
 
 export class Player {
-  hand: DeckSingleCard[] = [];
+  hand: DeckSingleCardDto[] = [];
   name: PlayerEnum;
   isOwnTurn = false;
   inThisTrickPlayedCard: DeckSingleCardDto | undefined;

@@ -4,7 +4,6 @@ import { DeckClass } from 'src/models/deck.model';
 import { CardSuitEnum, PlayerEnum } from 'src/models/enums';
 import { DeckSingleCardDto } from 'src/models/dtos/deckSingleCard.dto';
 import { PlayerDto } from 'src/models/dtos/player.dto';
-import { DeckSingleCard } from 'src/models/deck-single-card.model';
 
 export class GameManagerService {
   /**
@@ -175,15 +174,15 @@ export class GameManagerService {
     this.player2.hand = cardsForPlayer2;
   }
 
-  private compare = (a: DeckSingleCard, b: DeckSingleCard): number => {
-    if (a.data.suit < b.data.suit) {
+  private compare = (a: DeckSingleCardDto, b: DeckSingleCardDto): number => {
+    if (a.suit < b.suit) {
       return -1;
     }
-    if (a.data.suit > b.data.suit) {
+    if (a.suit > b.suit) {
       return +1;
     }
     // If suits are equal, sort by value
-    return a.data.numberValue - b.data.numberValue;
+    return a.numberValue - b.numberValue;
   };
 
   private determineWinnerCard = (
@@ -200,7 +199,7 @@ export class GameManagerService {
 
   private removeCardFromHand = (player: Player) => {
     const indexOfTheCard = player.hand.findIndex(
-      (cardOfHand) => cardOfHand.data.id === player.inThisTrickPlayedCard!.id,
+      (cardOfHand) => cardOfHand.id === player.inThisTrickPlayedCard!.id,
     );
     player.hand.splice(indexOfTheCard, 1);
   };
