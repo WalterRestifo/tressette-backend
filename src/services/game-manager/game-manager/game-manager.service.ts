@@ -1,4 +1,4 @@
-import { BehaviorSubject, filter } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 import { Player } from 'src/models/player.model';
 import { DeckClass } from 'src/models/deck.model';
 import { determineWinnerCard, removeCardFromHand } from '../game-manager-utils';
@@ -16,7 +16,7 @@ export class GameManagerService {
    * The cards that are in the middle. They are 40 before giving the cards to the players and 20 on the first trick. After every trick every player takes 1 card from the deck until the deck has no cards.
    */
   deck = this.deckClassInstance.deck;
-  private $playedCardCount = new BehaviorSubject(0);
+  playedCardCount = 0;
 
   /**
    * The suit that must be followed in the current trick. This is the suit of the card played by the leading player.
@@ -35,9 +35,6 @@ export class GameManagerService {
   constructor(sessionId: string) {
     this.sessionId = sessionId;
     this.initialiseGame();
-    this.$playedCardCount
-      .pipe(filter((count) => count === 2))
-      .subscribe(() => void this.playRound());
   }
 
   initialiseGame() {
@@ -49,7 +46,7 @@ export class GameManagerService {
   initialiseFirstRound() {
     this.dealInitialCards();
     // The first player always begin the first round
-    this.player1.$isOwnTurn.next(true);
+    this.player1.isOwnTurn = true;
     this.leadingPlayer = this.player1;
   }
 
@@ -61,8 +58,8 @@ export class GameManagerService {
     this.player2.hand = cardsForPlayer2;
   }
 
-  private async playRound() {
-    this.$playedCardCount.next(0);
+  async playRound() {
+    this.playedCardCount = 0;
     let winnerCard;
     if (this.leadingPlayer === this.player1) {
       winnerCard = determineWinnerCard(
@@ -94,14 +91,14 @@ export class GameManagerService {
       this.player1.points += trickPoints;
       this.leadingPlayer = this.player1;
       // if player1 wins the trick, it plays first in the next trick
-      this.player1.$isOwnTurn.next(true);
-      this.player2.$isOwnTurn.next(false);
+      this.player1.isOwnTurn = true;
+      this.player2.isOwnTurn = false;
     } else {
       this.player2.points += trickPoints;
       this.leadingPlayer = this.player2;
       // if player2 wins the trick, it plays first in the next trick
-      this.player1.$isOwnTurn.next(false);
-      this.player2.$isOwnTurn.next(true);
+      this.player1.isOwnTurn = false;
+      this.player2.isOwnTurn = true;
     }
 
     // reset everything for the new trick
@@ -118,7 +115,7 @@ export class GameManagerService {
 
   playCard(card: DeckSingleCardDto, player: PlayerDto) {
     // If it is the first played card in the trick, the card suit becomes the leading suit
-    if (this.$playedCardCount.value === 0) this.$leadingSuit.next(card.suit);
+    if (this.playedCardCount === 0) this.$leadingSuit.next(card.suit);
     if (player.name === this.player1.name) {
       this.player1.inThisTrickPlayedCard = card;
       removeCardFromHand(this.player1);
@@ -126,16 +123,16 @@ export class GameManagerService {
       this.player2.inThisTrickPlayedCard = card;
       removeCardFromHand(this.player2);
     }
-    this.$playedCardCount.next(this.$playedCardCount.value + 1);
+    this.playedCardCount++;
   }
 
   updateTurn() {
-    this.player1.$isOwnTurn.next(!this.player1.$isOwnTurn.value);
-    this.player2.$isOwnTurn.next(!this.player2.$isOwnTurn.value);
+    this.player1.isOwnTurn = !this.player1.isOwnTurn;
+    this.player2.isOwnTurn = !this.player2.isOwnTurn;
   }
 
   getCurrentPlayer() {
-    if (this.player1.$isOwnTurn.value) return this.player1;
+    if (this.player1.isOwnTurn) return this.player1;
     else return this.player2;
   }
 
@@ -158,8 +155,8 @@ export class GameManagerService {
     this.resetTrick();
     this.player1.points = 0;
     this.player2.points = 0;
-    this.player1.$isOwnTurn.next(true);
-    this.player2.$isOwnTurn.next(false);
+    this.player1.isOwnTurn = true;
+    this.player2.isOwnTurn = false;
     this.deckClassInstance = new DeckClass();
     this.deck = this.deckClassInstance.deck;
     this.initialiseGame();

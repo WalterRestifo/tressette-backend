@@ -10,12 +10,12 @@ import {
 import { Server, Socket } from 'socket.io';
 import { GameManagerDto } from 'src/models/dtos/gameManager.dto';
 import { PlayerDto } from 'src/models/dtos/player.dto';
-import { Player } from 'src/models/player.model';
 import { GameManagerService } from 'src/services/game-manager/game-manager/game-manager.service';
 import type { SessionDto } from 'src/models/dtos/session.dto';
 import { PlayerEnum, SessionTypeEnum } from 'src/models/enums';
 import type { SessionIdentityDto } from 'src/models/dtos/sessionIdentity.dto';
 import { DeckSingleCardDto } from 'src/models/dtos/deckSingleCard.dto';
+import { Subscription } from 'rxjs';
 
 @WebSocketGateway({
   cors: {
@@ -27,6 +27,8 @@ export class GameSyncGateway
 {
   private sessions: GameManagerService[] = [];
   private clients = new Map<string, Socket>();
+  private amountOfPlayers = 2;
+  private subscriptions: Subscription[] = [];
 
   @WebSocketServer()
   server: Server;
@@ -36,13 +38,16 @@ export class GameSyncGateway
   }
 
   handleDisconnect() {
-    console.log('connection to gateway closed. Resetting sessions and clients');
+    console.log(
+      'connection to gateway closed. Resetting sessions, clients and subscriptions',
+    );
     this.sessions = [];
     this.clients = new Map<string, Socket>();
+    this.subscriptions = [];
   }
 
   @SubscribeMessage('playedCard')
-  handlePlayCard(
+  async handlePlayCard(
     @ConnectedSocket() client: Socket,
     @MessageBody()
     payload: {
@@ -64,45 +69,58 @@ export class GameSyncGateway
         player.name,
       );
       this.server.to(room).emit('newCardPlayed', updatedGameManager);
+
+      if (sessionScopedGameManager.playedCardCount === this.amountOfPlayers) {
+        await sessionScopedGameManager.playRound();
+        const newTrickPlayer1Manager = this.createGameManagerDto(
+          sessionScopedGameManager,
+          PlayerEnum.Player1,
+        );
+        const newTrickPlayer2Manager = this.createGameManagerDto(
+          sessionScopedGameManager,
+          PlayerEnum.Player2,
+        );
+        const player1Client = this.clients.get(
+          this.getKey({
+            sessionId: payload.sessionIdentity.sessionId,
+            player: PlayerEnum.Player1,
+          }),
+        );
+        const player2Client = this.clients.get(
+          this.getKey({
+            sessionId: payload.sessionIdentity.sessionId,
+            player: PlayerEnum.Player2,
+          }),
+        );
+
+        player1Client?.emit('newTrickUpdate', newTrickPlayer1Manager);
+        player2Client?.emit('newTrickUpdate', newTrickPlayer2Manager);
+      }
     } else {
       client.emit('error', { message: 'game manager session lost' });
     }
   }
 
   //todo: transfer this logic to an util
-  private sanitizePlayer(player: Player): PlayerDto {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { $isOwnTurn, ...rest } = player; // omit the observable because it cannot be parsed
-    const result: PlayerDto = {
-      ...rest,
-      // replace the observable with the value of it
-      isOwnTurn: player.$isOwnTurn.value,
-    };
-    return result;
-  }
-  //todo: transfer this logic to an util
   private createGameManagerDto(
     gameManager: GameManagerService,
     player: PlayerEnum,
   ): GameManagerDto {
     const { $gameEnded, $leadingSuit, player1, player2 } = gameManager;
-    const player1Dto = this.sanitizePlayer(player1);
     let result = {
       gameEnded: $gameEnded.value,
-      player: player1Dto,
+      player: player1,
       leadingSuit: $leadingSuit.value,
       inThisTrickPlayedCards: {
         player1: player1.inThisTrickPlayedCard,
         player2: player2.inThisTrickPlayedCard,
       },
-      currentPlayerName: this.sanitizePlayer(gameManager.getCurrentPlayer())
-        .name,
+      currentPlayerName: gameManager.getCurrentPlayer().name,
       sessionIdentity: { sessionId: gameManager.sessionId, player: player },
     };
 
     if (player === PlayerEnum.Player2) {
-      const player2Dto = this.sanitizePlayer(player2);
-      result = { ...result, player: player2Dto };
+      result = { ...result, player: player2 };
     }
 
     return result;
@@ -116,6 +134,20 @@ export class GameSyncGateway
       sessionIdentity.sessionId,
     );
     this.sessions.push(sessionScopedGameManager);
+
+    const endGameSub = sessionScopedGameManager.$gameEnded.subscribe(
+      (value) => {
+        if (value) {
+          const room = sessionIdentity.sessionId;
+          const gameManagerDto = this.createGameManagerDto(
+            sessionScopedGameManager,
+            sessionScopedGameManager.winner?.name ?? PlayerEnum.Player1,
+          );
+          this.server.to(room).emit('gameEnded', gameManagerDto);
+        }
+      },
+    );
+    this.subscriptions.push(endGameSub);
     const gameData = this.createGameManagerDto(
       sessionScopedGameManager,
       sessionIdentity.player,
@@ -148,20 +180,15 @@ export class GameSyncGateway
   }
 
   @SubscribeMessage('quitGame')
-  handleEndGame(
-    @MessageBody() sessionIdentityData: SessionIdentityDto,
-    @ConnectedSocket() client: Socket,
-  ) {
+  handleEndGame(@MessageBody() sessionIdentityData: SessionIdentityDto) {
     const openSession = this.getOpenSession(sessionIdentityData.sessionId);
+    const room = sessionIdentityData.sessionId;
     if (openSession) {
       openSession.endGame();
-      const gameData = this.createGameManagerDto(
-        openSession,
-        sessionIdentityData.player,
-      );
-      client.emit('gameQuitted', gameData.gameEnded);
     } else {
-      client.emit('error', { message: 'The session id was lost' });
+      this.server
+        .to(room)
+        .emit('error', { message: 'The session id was lost' });
     }
   }
 
