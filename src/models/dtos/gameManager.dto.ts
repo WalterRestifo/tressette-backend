@@ -6,11 +6,12 @@ import { SessionIdentityDto } from './sessionIdentity.dto';
 export type GameManagerDto = {
   player: PlayerDto;
   gameEnded: boolean;
-  leadingSuit: CardSuitEnum | undefined;
+  leadingSuit?: CardSuitEnum;
   inThisTrickPlayedCards: {
-    player1: DeckSingleCardDto | undefined;
-    player2: DeckSingleCardDto | undefined;
+    player1?: DeckSingleCardDto;
+    player2?: DeckSingleCardDto;
   };
   currentPlayerName: PlayerEnum;
   sessionIdentity: SessionIdentityDto;
+  winner?: PlayerDto;
 };

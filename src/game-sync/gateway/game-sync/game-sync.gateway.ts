@@ -182,6 +182,7 @@ export class GameSyncGateway
       },
       currentPlayerName: gameManager.getCurrentPlayer().name,
       sessionIdentity: { sessionId: gameManager.sessionId, player: player },
+      winner: gameManager.winner,
     };
 
     if (player === PlayerEnum.Player2) {
