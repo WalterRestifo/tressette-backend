@@ -16,6 +16,7 @@ import { PlayerEnum, SessionTypeEnum } from 'src/models/enums';
 import type { SessionIdentityDto } from 'src/models/dtos/sessionIdentity.dto';
 import { DeckSingleCardDto } from 'src/models/dtos/deckSingleCard.dto';
 import { Subscription } from 'rxjs';
+import { SessionsManagerService } from 'src/services/sessions-manager/sessions-manager.service';
 
 @WebSocketGateway({
   cors: {
@@ -25,10 +26,10 @@ import { Subscription } from 'rxjs';
 export class GameSyncGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {
-  private sessions: GameManagerService[] = [];
-  private clients = new Map<string, Socket>();
   readonly amountOfPlayers = 2;
   private subscriptions = new Subscription();
+
+  constructor(private sessionsManager: SessionsManagerService) {}
 
   @WebSocketServer()
   server: Server;
@@ -41,8 +42,8 @@ export class GameSyncGateway
     console.log(
       'connection to gateway closed. Resetting sessions, clients and subscriptions',
     );
-    this.sessions = [];
-    this.clients = new Map<string, Socket>();
+    this.sessionsManager.clearAllClientes();
+    this.sessionsManager.clearAllSessions();
     this.subscriptions.unsubscribe();
   }
 
@@ -56,8 +57,8 @@ export class GameSyncGateway
       sessionIdentity: SessionIdentityDto;
     },
   ) {
-    const roomScopedGameManager = this.sessions.find(
-      ({ sessionId }) => sessionId === payload.sessionIdentity.sessionId,
+    const roomScopedGameManager = this.sessionsManager.getSession(
+      payload.sessionIdentity.sessionId,
     );
     if (roomScopedGameManager) {
       const { card, player } = payload;
@@ -80,13 +81,13 @@ export class GameSyncGateway
           roomScopedGameManager,
           PlayerEnum.Player2,
         );
-        const player1Client = this.clients.get(
+        const player1Client = this.sessionsManager.getClient(
           this.getKey({
             sessionId: payload.sessionIdentity.sessionId,
             player: PlayerEnum.Player1,
           }),
         );
-        const player2Client = this.clients.get(
+        const player2Client = this.sessionsManager.getClient(
           this.getKey({
             sessionId: payload.sessionIdentity.sessionId,
             player: PlayerEnum.Player2,
@@ -106,7 +107,7 @@ export class GameSyncGateway
     @MessageBody() sessionIdentityData: SessionIdentityDto,
     @ConnectedSocket() client: Socket,
   ) {
-    const roomScopedGameManager = this.getCorrectGameManagerInstance(
+    const roomScopedGameManager = this.sessionsManager.getSession(
       sessionIdentityData.sessionId,
     );
     if (roomScopedGameManager) {
@@ -123,12 +124,32 @@ export class GameSyncGateway
 
   @SubscribeMessage('endGame')
   handleEndGame(@MessageBody() sessionIdentityData: SessionIdentityDto) {
-    const roomScopedGameManager = this.getCorrectGameManagerInstance(
+    const roomScopedGameManager = this.sessionsManager.getSession(
       sessionIdentityData.sessionId,
     );
     const room = sessionIdentityData.sessionId;
     if (roomScopedGameManager) {
       roomScopedGameManager.endGame();
+      const player1Client = this.sessionsManager.getClient(
+        this.getKey({
+          sessionId: sessionIdentityData.sessionId,
+          player: PlayerEnum.Player1,
+        }),
+      );
+      const player2Client = this.sessionsManager.getClient(
+        this.getKey({
+          sessionId: sessionIdentityData.sessionId,
+          player: PlayerEnum.Player2,
+        }),
+      );
+      player1Client?.emit(
+        'gameEnded',
+        this.createGameManagerDto(roomScopedGameManager, PlayerEnum.Player1),
+      );
+      player2Client?.emit(
+        'gameEnded',
+        this.createGameManagerDto(roomScopedGameManager, PlayerEnum.Player2),
+      );
     } else {
       this.server
         .to(room)
@@ -145,12 +166,14 @@ export class GameSyncGateway
       this.registerClient(sessionData, client);
       await this.handleInitGame(client, sessionData);
     } else {
-      const roomScopedGameManager = this.getCorrectGameManagerInstance(
+      const roomScopedGameManager = this.sessionsManager.getSession(
         sessionData.sessionId,
       );
       if (roomScopedGameManager) {
         this.registerClient(sessionData, client);
-        const targetClient = this.clients.get(this.getKey(sessionData));
+        const targetClient = this.sessionsManager.getClient(
+          this.getKey(sessionData),
+        );
         if (targetClient) {
           await targetClient.join(sessionData.sessionId);
         } else {
@@ -199,7 +222,14 @@ export class GameSyncGateway
     const roomScopedGameManager = new GameManagerService(
       sessionIdentity.sessionId,
     );
-    this.sessions.push(roomScopedGameManager);
+    const successfulAdded = this.sessionsManager.addSession(
+      roomScopedGameManager,
+    );
+    if (!successfulAdded) {
+      return client.emit('error', {
+        message: 'Too many open sessions in the server. Try again later.',
+      });
+    }
 
     const endGameSub = roomScopedGameManager.$gameEnded.subscribe((value) => {
       if (value) {
@@ -216,7 +246,9 @@ export class GameSyncGateway
       roomScopedGameManager,
       sessionIdentity.player,
     );
-    const targetClient = this.clients.get(this.getKey(sessionIdentity));
+    const targetClient = this.sessionsManager.getClient(
+      this.getKey(sessionIdentity),
+    );
     if (targetClient) {
       await targetClient.join(sessionIdentity.sessionId);
       targetClient.emit('gameInitialised', gameData);
@@ -225,18 +257,12 @@ export class GameSyncGateway
     }
   }
 
-  private getCorrectGameManagerInstance(sessionId: string) {
-    return this.sessions.find(
-      (openSession) => openSession.sessionId === sessionId,
-    );
-  }
-
   private getKey(sessionIdentity: SessionIdentityDto) {
     return `${sessionIdentity.sessionId}_${sessionIdentity.player}`;
   }
 
   private registerClient(sessionIdentity: SessionIdentityDto, client: Socket) {
     const key = this.getKey(sessionIdentity);
-    this.clients.set(key, client);
+    this.sessionsManager.addClient(key, client);
   }
 }
