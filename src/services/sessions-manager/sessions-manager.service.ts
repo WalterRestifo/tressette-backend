@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { GameManagerService } from '../game-manager/game-manager/game-manager.service';
 import { Socket } from 'socket.io';
-import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class SessionsManagerService {
