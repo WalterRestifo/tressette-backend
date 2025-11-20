@@ -7,6 +7,7 @@ export class Player {
   isOwnTurn = false;
   inThisTrickPlayedCard: DeckSingleCardDto | undefined;
   points: number = 0;
+  fromOpponentPlayerLastDrawnCard: DeckSingleCardDto | undefined;
   constructor(name: PlayerEnum) {
     this.name = name;
   }

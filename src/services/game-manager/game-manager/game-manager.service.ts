@@ -85,8 +85,14 @@ export class GameManagerService {
 
     const newCard1 = this.deckClassInstance.takeNewCardFromDeck();
     const newCard2 = this.deckClassInstance.takeNewCardFromDeck();
-    if (newCard1) this.player1.hand.push(newCard1);
-    if (newCard2) this.player2.hand.push(newCard2);
+    if (newCard1) {
+      this.player1.hand.push(newCard1);
+      this.player2.fromOpponentPlayerLastDrawnCard = newCard1;
+    }
+    if (newCard2) {
+      this.player2.hand.push(newCard2);
+      this.player1.fromOpponentPlayerLastDrawnCard = newCard2;
+    }
 
     this.player1.hand.sort((a, b) => this.compare(a, b));
     this.player2.hand.sort((a, b) => this.compare(a, b));

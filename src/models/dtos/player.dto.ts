@@ -6,5 +6,6 @@ export type PlayerDto = {
   name: PlayerEnum;
   isOwnTurn: boolean;
   inThisTrickPlayedCard: DeckSingleCardDto | undefined;
+  fromOpponentPlayerLastDrawnCard: DeckSingleCardDto | undefined;
   points: number;
 };
