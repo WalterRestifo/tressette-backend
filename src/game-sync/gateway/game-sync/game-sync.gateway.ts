@@ -20,7 +20,8 @@ import { SessionsManagerService } from 'src/services/sessions-manager/sessions-m
 
 @WebSocketGateway({
   cors: {
-    origin: 'https://tressette-frontend-863401855094.europe-west1.run.app',
+    origin:
+      'https://tressette-frontend-863401855094.europe-west1.run.app,http://localhost:4200',
   },
 })
 export class GameSyncGateway
