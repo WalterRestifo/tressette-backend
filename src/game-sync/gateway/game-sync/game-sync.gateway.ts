@@ -21,6 +21,7 @@ import { SessionsManagerService } from 'src/services/sessions-manager/sessions-m
 @WebSocketGateway({
   cors: {
     origin: process.env.FRONTEND_URL,
+    credentials: true,
   },
 })
 export class GameSyncGateway
