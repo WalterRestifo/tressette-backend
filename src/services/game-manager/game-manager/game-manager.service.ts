@@ -1,9 +1,9 @@
 import { BehaviorSubject } from 'rxjs';
-import { Player } from 'src/models/player.model';
-import { DeckClass } from 'src/models/deck.model';
-import { CardSuitEnum, PlayerEnum } from 'src/models/enums';
-import { DeckSingleCardDto } from 'src/models/dtos/deckSingleCard.dto';
-import { PlayerDto } from 'src/models/dtos/player.dto';
+import { Player } from '../../../models/player.model';
+import { DeckClass } from '../../../models/deck.model';
+import { CardSuitEnum, PlayerEnum } from '../../../models/enums';
+import { DeckSingleCardDto } from '../../../models/dtos/deckSingleCard.dto';
+import { PlayerDto } from '../../../models/dtos/player.dto';
 
 export class GameManagerService {
   /**

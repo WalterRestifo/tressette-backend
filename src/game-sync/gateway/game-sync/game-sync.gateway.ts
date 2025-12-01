@@ -8,15 +8,15 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { GameManagerDto } from 'src/models/dtos/gameManager.dto';
-import { PlayerDto } from 'src/models/dtos/player.dto';
-import { GameManagerService } from 'src/services/game-manager/game-manager/game-manager.service';
-import type { SessionDto } from 'src/models/dtos/session.dto';
-import { PlayerEnum, SessionTypeEnum } from 'src/models/enums';
-import type { SessionIdentityDto } from 'src/models/dtos/sessionIdentity.dto';
-import { DeckSingleCardDto } from 'src/models/dtos/deckSingleCard.dto';
+import { GameManagerDto } from '../../../models/dtos/gameManager.dto';
+import { PlayerDto } from '../../../models/dtos/player.dto';
+import { GameManagerService } from '../../../services/game-manager/game-manager/game-manager.service';
+import type { SessionDto } from '../../../models/dtos/session.dto';
+import { PlayerEnum, SessionTypeEnum } from '../../../models/enums';
+import type { SessionIdentityDto } from '../../../models/dtos/sessionIdentity.dto';
+import { DeckSingleCardDto } from '../../../models/dtos/deckSingleCard.dto';
 import { Subscription } from 'rxjs';
-import { SessionsManagerService } from 'src/services/sessions-manager/sessions-manager.service';
+import { SessionsManagerService } from '../../../services/sessions-manager/sessions-manager.service';
 
 @WebSocketGateway({
   cors: {
