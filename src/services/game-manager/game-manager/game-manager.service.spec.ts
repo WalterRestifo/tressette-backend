@@ -84,7 +84,7 @@ describe('GameManagerService', () => {
     expect(service.$gameEnded.value).toBe(false);
   });
 
-  it('should play the round correctly', async () => {
+  it('should play the round correctly', () => {
     const acePointsBeforeMath = 3;
 
     const mockPlayer2: PlayerDto = {
@@ -103,7 +103,7 @@ describe('GameManagerService', () => {
     service.player2 = mockPlayer2;
     service.leadingSuit = CardSuitEnum.Coins;
 
-    await service.playRound();
+    service.playRound();
 
     expect(service.player1.points).toBe(acePointsBeforeMath);
   });
