@@ -124,12 +124,6 @@ export class GameManagerService {
     else return this.player2;
   }
 
-  resetTrick() {
-    this.player1.inThisTrickPlayedCard = undefined;
-    this.player2.inThisTrickPlayedCard = undefined;
-    this.leadingSuit = undefined;
-  }
-
   endGame = () => {
     if (this.player1.points > this.player2.points) {
       this.winner = this.player1;
@@ -149,10 +143,6 @@ export class GameManagerService {
     this.deck = this.deckClassInstance.deck;
     this.initialiseGame();
     this.$gameEnded.next(false);
-  };
-
-  normalizePoints = (points: number) => {
-    return points / this.normalizationFactor;
   };
 
   private initialiseGame() {
@@ -209,4 +199,10 @@ export class GameManagerService {
     );
     player.hand.splice(indexOfTheCard, 1);
   };
+
+  private resetTrick() {
+    this.player1.inThisTrickPlayedCard = undefined;
+    this.player2.inThisTrickPlayedCard = undefined;
+    this.leadingSuit = undefined;
+  }
 }

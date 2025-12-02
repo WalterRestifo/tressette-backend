@@ -13,20 +13,6 @@ export const cardGameValueMap = new Map([
   [10, 6],
 ]);
 
-/* The cardGameValueMap links the value of the card with the in game power value (3 is the most powerful card and 4 the weakest one) 
-{
-  Ace = 7,
-  Two = 8,
-  Three = 9,
-  Four = 0,
-  Five = 1,
-  Six = 2,
-  Seven = 3,
-  Knave = 4,
-  Knight = 5,
-  King = 6,
-} */
-
 export const cardPointValueMap = new Map([
   [1, CardPointValueEnum.Full],
   [2, CardPointValueEnum.Third],
