@@ -49,7 +49,7 @@ export class GameSyncGateway
   }
 
   @SubscribeMessage('playedCard')
-  async handlePlayCard(
+  handlePlayCard(
     @ConnectedSocket() client: Socket,
     @MessageBody()
     payload: {
@@ -73,7 +73,7 @@ export class GameSyncGateway
       this.server.to(room).emit('newCardPlayed', updatedGameManager);
 
       if (roomScopedGameManager.playedCardCount === this.amountOfPlayers) {
-        await roomScopedGameManager.playRound();
+        roomScopedGameManager.playRound();
         const newTrickPlayer1Manager = this.createGameManagerDto(
           roomScopedGameManager,
           PlayerEnum.Player1,
