@@ -6,11 +6,6 @@ import { DeckSingleCardDto } from '../../../models/dtos/deckSingleCard.dto';
 import { PlayerDto } from '../../../models/dtos/player.dto';
 
 export class GameManagerService {
-  /**
-   * The ace has normally 1 point and the other cards with point have 1/3 point value.
-   */
-  private normalizationFactor = 3;
-
   readonly sessionId: string;
   private deckClassInstance = new DeckClass();
   player1 = new Player(PlayerEnum.Player1);
@@ -37,7 +32,7 @@ export class GameManagerService {
     this.initialiseGame();
   }
 
-  async playRound() {
+  playRound() {
     this.playedCardCount = 0;
     let winnerCard: DeckSingleCardDto;
     if (this.leadingPlayer === this.player1) {
@@ -53,9 +48,6 @@ export class GameManagerService {
         this.leadingSuit!,
       );
     }
-
-    //wait 2 seconds, so that the players can see what cards were played, before the new trick begins
-    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     const cardTrickPoints =
       this.player1.inThisTrickPlayedCard!.pointValue +
