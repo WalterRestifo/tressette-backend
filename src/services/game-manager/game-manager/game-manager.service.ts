@@ -8,8 +8,8 @@ import { PlayerDto } from '../../../models/dtos/player.dto';
 export class GameManagerService {
   readonly sessionId: string;
   private deckClassInstance = new DeckClass();
-  player1 = new Player(PlayerEnum.Player1);
-  player2 = new Player(PlayerEnum.Player2);
+  player1: Player;
+  player2: Player;
   winner: Player | undefined = undefined;
   /**
    * The cards that are in the middle. They are 40 before giving the cards to the players and 20 on the first trick. After every trick every player takes 1 card from the deck until the deck has no cards.
@@ -24,11 +24,24 @@ export class GameManagerService {
   /**
    * The player that won the last trick. If the game just begun, it is player 1.
    */
-  private leadingPlayer: Player = this.player1;
+  private leadingPlayer: Player;
   $gameEnded = new BehaviorSubject(false);
 
-  constructor(sessionId: string) {
+  constructor(
+    sessionId: string,
+    player1UserName: string,
+    player2UserName: string,
+  ) {
     this.sessionId = sessionId;
+    this.player1 = new Player({
+      enumName: PlayerEnum.Player1,
+      userName: player1UserName,
+    });
+    this.player2 = new Player({
+      enumName: PlayerEnum.Player2,
+      userName: player2UserName,
+    });
+    this.leadingPlayer = this.player1;
     this.initialiseGame();
   }
 
@@ -96,7 +109,7 @@ export class GameManagerService {
   playCard(card: DeckSingleCardDto, player: PlayerDto) {
     // If it is the first played card in the trick, the card suit becomes the leading suit
     if (this.playedCardCount === 0) this.leadingSuit = card.suit;
-    if (player.name === this.player1.name) {
+    if (player.name.enumName === this.player1.name.enumName) {
       this.player1.inThisTrickPlayedCard = card;
       this.removeCardFromHand(this.player1);
     } else {

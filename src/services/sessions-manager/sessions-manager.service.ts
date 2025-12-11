@@ -1,15 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { GameManagerService } from '../game-manager/game-manager/game-manager.service';
 import { Socket } from 'socket.io';
+import { PlayerName } from 'src/models/dtos/playerName.dto';
+
+export type GameSessionClientSocket = {
+  sessionId: string;
+  player: PlayerName;
+  clientInstance: Socket;
+};
 
 @Injectable()
 export class SessionsManagerService {
   private sessions: GameManagerService[] = [];
-  private clients: Map<string, Socket> = new Map();
+  private clients: Map<string, GameSessionClientSocket> = new Map();
   private sessionsLimit = 100;
 
-  addClient(key: string, client: Socket) {
-    this.clients.set(key, client);
+  addClient(key: string, clientInfo: GameSessionClientSocket) {
+    this.clients.set(key, clientInfo);
   }
 
   getClient(key: string) {

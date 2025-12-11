@@ -16,11 +16,14 @@ import { PlayerEnum, SessionTypeEnum } from '../../../models/enums';
 import type { SessionIdentityDto } from '../../../models/dtos/sessionIdentity.dto';
 import { DeckSingleCardDto } from '../../../models/dtos/deckSingleCard.dto';
 import { Subscription } from 'rxjs';
-import { SessionsManagerService } from '../../../services/sessions-manager/sessions-manager.service';
+import {
+  type GameSessionClientSocket,
+  SessionsManagerService,
+} from '../../../services/sessions-manager/sessions-manager.service';
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.FRONTEND_URL,
+    origin: process.env.FRONTEND_URL || 'http://localhost:4200',
     credentials: true,
   },
 })
@@ -68,7 +71,7 @@ export class GameSyncGateway
       const room = payload.sessionIdentity.sessionId;
       const updatedGameManager = this.createGameManagerDto(
         roomScopedGameManager,
-        player.name,
+        player.name.enumName,
       );
       this.server.to(room).emit('newCardPlayed', updatedGameManager);
 
@@ -82,21 +85,21 @@ export class GameSyncGateway
           roomScopedGameManager,
           PlayerEnum.Player2,
         );
-        const player1Client = this.sessionsManager.getClient(
-          this.getKey({
-            sessionId: payload.sessionIdentity.sessionId,
-            player: PlayerEnum.Player1,
-          }),
+        const clientSocket1 = this.sessionsManager.getClient(
+          this.getKey(payload.sessionIdentity.sessionId, PlayerEnum.Player1),
         );
-        const player2Client = this.sessionsManager.getClient(
-          this.getKey({
-            sessionId: payload.sessionIdentity.sessionId,
-            player: PlayerEnum.Player2,
-          }),
+        const clientSocket2 = this.sessionsManager.getClient(
+          this.getKey(payload.sessionIdentity.sessionId, PlayerEnum.Player2),
         );
 
-        player1Client?.emit('newTrickUpdate', newTrickPlayer1Manager);
-        player2Client?.emit('newTrickUpdate', newTrickPlayer2Manager);
+        clientSocket1?.clientInstance.emit(
+          'newTrickUpdate',
+          newTrickPlayer1Manager,
+        );
+        clientSocket2?.clientInstance.emit(
+          'newTrickUpdate',
+          newTrickPlayer2Manager,
+        );
       }
     } else {
       client.emit('error', { message: 'game manager session lost' });
@@ -115,7 +118,7 @@ export class GameSyncGateway
       roomScopedGameManager.startNewGame();
       const gameData = this.createGameManagerDto(
         roomScopedGameManager,
-        sessionIdentityData.player,
+        sessionIdentityData.player.enumName,
       );
       client.emit('gameInitialised', gameData);
     } else {
@@ -131,23 +134,18 @@ export class GameSyncGateway
     const room = sessionIdentityData.sessionId;
     if (roomScopedGameManager) {
       roomScopedGameManager.endGame();
-      const player1Client = this.sessionsManager.getClient(
-        this.getKey({
-          sessionId: sessionIdentityData.sessionId,
-          player: PlayerEnum.Player1,
-        }),
+
+      const clientSocket1 = this.sessionsManager.getClient(
+        this.getKey(sessionIdentityData.sessionId, PlayerEnum.Player1),
       );
-      const player2Client = this.sessionsManager.getClient(
-        this.getKey({
-          sessionId: sessionIdentityData.sessionId,
-          player: PlayerEnum.Player2,
-        }),
+      const clientSocket2 = this.sessionsManager.getClient(
+        this.getKey(sessionIdentityData.sessionId, PlayerEnum.Player2),
       );
-      player1Client?.emit(
+      clientSocket1?.clientInstance.emit(
         'gameEnded',
         this.createGameManagerDto(roomScopedGameManager, PlayerEnum.Player1),
       );
-      player2Client?.emit(
+      clientSocket2?.clientInstance.emit(
         'gameEnded',
         this.createGameManagerDto(roomScopedGameManager, PlayerEnum.Player2),
       );
@@ -163,31 +161,37 @@ export class GameSyncGateway
     @MessageBody() sessionData: SessionDto,
     @ConnectedSocket() client: Socket,
   ) {
-    if (sessionData.sessionType === SessionTypeEnum.New) {
-      this.registerClient(sessionData, client);
-      await this.handleInitGame(client, sessionData);
-    } else {
-      const roomScopedGameManager = this.sessionsManager.getSession(
-        sessionData.sessionId,
+    this.registerClient(sessionData, client);
+    await client.join(sessionData.sessionId);
+
+    if (sessionData.sessionType === SessionTypeEnum.Join) {
+      const clientSocket1 = this.sessionsManager.getClient(
+        this.getKey(sessionData.sessionId, PlayerEnum.Player1),
       );
-      if (roomScopedGameManager) {
-        this.registerClient(sessionData, client);
-        const targetClient = this.sessionsManager.getClient(
-          this.getKey(sessionData),
-        );
-        if (targetClient) {
-          await targetClient.join(sessionData.sessionId);
-        } else {
-          client.emit('error', { message: 'client socket not found' });
-        }
-        const gameData = this.createGameManagerDto(
-          roomScopedGameManager,
-          sessionData.player,
-        );
-        client.emit('gameInitialised', gameData);
+      const clientSocket2 = this.sessionsManager.getClient(
+        this.getKey(sessionData.sessionId, PlayerEnum.Player2),
+      );
+
+      if (!clientSocket1 || !clientSocket2) {
+        return client.emit('error', {
+          message: 'Player 1 or Player 2 not found',
+        });
       } else {
-        client.emit('error', { message: 'session not found' });
+        this.handleInitGame(client, sessionData, clientSocket1, clientSocket2);
       }
+    }
+    // ab hier weiter schauen ob die Logik stimmt
+    const roomScopedGameManager = this.sessionsManager.getSession(
+      sessionData.sessionId,
+    );
+    if (roomScopedGameManager) {
+      const gameData = this.createGameManagerDto(
+        roomScopedGameManager,
+        sessionData.player.enumName,
+      );
+      client.emit('gameInitialised', gameData);
+    } else {
+      client.emit('error', { message: 'session not found' });
     }
   }
 
@@ -205,23 +209,37 @@ export class GameSyncGateway
         player2: player2.inThisTrickPlayedCard,
       },
       currentPlayerName: gameManager.getCurrentPlayer().name,
-      sessionIdentity: { sessionId: gameManager.sessionId, player: player },
+      sessionIdentity: {
+        sessionId: gameManager.sessionId,
+        player: player1.name,
+      },
       winner: gameManager.winner,
     };
 
     if (player === PlayerEnum.Player2) {
-      result = { ...result, player: player2 };
+      result = {
+        ...result,
+        player: player2,
+        sessionIdentity: {
+          sessionId: gameManager.sessionId,
+          player: player2.name,
+        },
+      };
     }
 
     return result;
   }
 
-  private async handleInitGame(
+  private handleInitGame(
     @ConnectedSocket() client: Socket,
     sessionIdentity: SessionDto,
+    player1ClientSocket: GameSessionClientSocket,
+    player2ClientSocket: GameSessionClientSocket,
   ) {
     const roomScopedGameManager = new GameManagerService(
       sessionIdentity.sessionId,
+      player1ClientSocket.player.userName,
+      player2ClientSocket.player.userName,
     );
     const successfulAdded = this.sessionsManager.addSession(
       roomScopedGameManager,
@@ -237,33 +255,41 @@ export class GameSyncGateway
         const room = sessionIdentity.sessionId;
         const gameManagerDto = this.createGameManagerDto(
           roomScopedGameManager,
-          roomScopedGameManager.winner?.name ?? PlayerEnum.Player1,
+          roomScopedGameManager.winner?.name.enumName ?? PlayerEnum.Player1,
         );
         this.server.to(room).emit('gameEnded', gameManagerDto);
       }
     });
     this.subscriptions.add(endGameSub);
-    const gameData = this.createGameManagerDto(
+
+    const gameData1 = this.createGameManagerDto(
       roomScopedGameManager,
-      sessionIdentity.player,
+      PlayerEnum.Player1,
     );
-    const targetClient = this.sessionsManager.getClient(
-      this.getKey(sessionIdentity),
+
+    const gameData2 = this.createGameManagerDto(
+      roomScopedGameManager,
+      PlayerEnum.Player2,
     );
-    if (targetClient) {
-      await targetClient.join(sessionIdentity.sessionId);
-      targetClient.emit('gameInitialised', gameData);
-    } else {
-      client.emit('error', { message: 'client socket not found' });
-    }
+
+    player1ClientSocket.clientInstance.emit('gameInitialised', gameData1);
+
+    player2ClientSocket.clientInstance.emit('gameInitialised', gameData2);
   }
 
-  private getKey(sessionIdentity: SessionIdentityDto) {
-    return `${sessionIdentity.sessionId}_${sessionIdentity.player}`;
+  private getKey(sessionId: string, playerEnum: PlayerEnum) {
+    return `${sessionId}_${playerEnum}`;
   }
 
   private registerClient(sessionIdentity: SessionIdentityDto, client: Socket) {
-    const key = this.getKey(sessionIdentity);
-    this.sessionsManager.addClient(key, client);
+    const key = this.getKey(
+      sessionIdentity.sessionId,
+      sessionIdentity.player.enumName,
+    );
+    this.sessionsManager.addClient(key, {
+      sessionId: sessionIdentity.sessionId,
+      player: sessionIdentity.player,
+      clientInstance: client,
+    });
   }
 }

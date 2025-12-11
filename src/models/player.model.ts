@@ -1,14 +1,14 @@
 import { DeckSingleCardDto } from './dtos/deckSingleCard.dto';
-import { PlayerEnum } from './enums';
+import { PlayerName } from './dtos/playerName.dto';
 
 export class Player {
   hand: DeckSingleCardDto[] = [];
-  name: PlayerEnum;
+  name: PlayerName;
   isOwnTurn = false;
   inThisTrickPlayedCard: DeckSingleCardDto | undefined;
   points: number = 0;
   fromOpponentPlayerLastDrawnCard: DeckSingleCardDto | undefined;
-  constructor(name: PlayerEnum) {
+  constructor(name: PlayerName) {
     this.name = name;
   }
 }
